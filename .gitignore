@@ -1,0 +1,4 @@
+a.out
+*.o
+
+file_hole/foo
