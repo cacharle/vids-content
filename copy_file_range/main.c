@@ -3,11 +3,13 @@
 #include <unistd.h>
 #include <assert.h>
 #include <fcntl.h>
+#include <stdio.h>
 
-#define BUF_SIZE 4096
+#define BUF_SIZE (128 * 1024)
 
 int main(int argc, char **argv)
 {
+    printf("pid: %d\n", getpid());
     assert(argc == 3);
     int fd_in = open(argv[1], O_RDONLY);
     int fd_out = open(argv[2], O_WRONLY | O_CREAT | O_TRUNC, 0644);
