@@ -9,16 +9,7 @@
 
 #define DEST_DOMAIN_NAME "google.com"
 
-int icmp_create_socket()
-{
-}
-
-void icmp_send(int id, int ttl)
-{
-}
-
-uint16_t
-checksum(uint16_t *data, size_t size)
+static uint16_t checksum(uint16_t *data, size_t size)
 {
     uint32_t sum = 0;
     size_t   data_len = size / 2;
@@ -27,52 +18,108 @@ checksum(uint16_t *data, size_t size)
     return ~((sum << 16 >> 16) + (sum >> 16));
 }
 
-int main()
+static struct addrinfo *destination_addrinfo;
+static struct addrinfo *source_addrinfo;
+static struct in_addr source_ip_addr;
+static struct in_addr destination_ip_addr;
+
+void
+xgetaddrinfo(const char *node, struct addrinfo **addrinfo)
 {
     struct addrinfo hints = {0};
     hints.ai_family = AF_INET;
     hints.ai_socktype = 0;
     hints.ai_protocol = 0;
-    struct addrinfo   *destination_addrinfo;
-    int err = getaddrinfo(
-        DEST_DOMAIN_NAME,
-        NULL,
-        &hints,
-        &destination_addrinfo);
+    int err = getaddrinfo(node, NULL, &hints, addrinfo);
     assert(err == 0);
-    struct sockaddr_in *addr =
-        (struct sockaddr_in *)destination_addrinfo->ai_addr;
-    printf("Destination IP: %s\n",
-            inet_ntoa((struct in_addr)addr->sin_addr));
+}
 
-    // Create socket
-    int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
+struct in_addr
+addrinfo_to_ip(const struct addrinfo *addrinfo)
+{
+    // from: https://stackoverflow.com/questions/20115295
+    struct sockaddr_in *addr = (struct sockaddr_in *)addrinfo->ai_addr;
+    return (struct in_addr)addr->sin_addr;
+}
 
-    struct icmphdr packet = {
-        .type = ICMP_ECHO,
-        .code = 0,
-        .checksum = 0,
-        .un = { .echo = { .id = 0, .sequence = 0 } }
+int icmp_create_socket(const char *dest_domain_name)
+{
+
+    char localhost[1024];
+    gethostname(localhost, 1024);
+    xgetaddrinfo(localhost, &source_addrinfo);
+    source_ip_addr = addrinfo_to_ip(source_addrinfo);
+
+    xgetaddrinfo(dest_domain_name, &destination_addrinfo);
+    destination_ip_addr = addrinfo_to_ip(destination_addrinfo);
+    printf("Destination (%s) IP: %s\n",
+            dest_domain_name, inet_ntoa(destination_ip_addr));
+
+    int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+    assert(sock != -1);
+    struct timeval tv = { .tv_sec = 2, .tv_usec = 0 };
+    setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
+    return sock;
+}
+
+struct ping_packet
+{
+    struct iphdr   ip;
+    struct icmphdr icmp;
+};
+
+void icmp_send(int sock, int sequence, int ttl)
+{
+    struct ping_packet packet = {
+        .ip = {
+            .ihl = 5,
+            .version = 4,
+            .tos = 0,
+            .tot_len = htons(sizeof(struct iphdr) + sizeof(struct icmphdr)),
+            .id = 0,
+            .frag_off = 0,
+            .ttl = ttl,
+            .protocol = IPPROTO_ICMP,
+            .check = 0,
+            .saddr = source_ip_addr.s_addr,
+            .daddr = destination_ip_addr.s_addr,
+            .check = 0,
+        },
+        .icmp = {
+            .type = ICMP_ECHO,
+            .code = 0,
+            .checksum = 0,
+            .un = { .echo = { .id = 42, .sequence = sequence } }
+        }
     };
-    packet.checksum = checksum((uint16_t *)&packet, sizeof(packet));
+    packet.ip.check = checksum((uint16_t *)&packet.ip, sizeof(packet.ip));
+    packet.icmp.checksum = checksum((uint16_t *)&packet.icmp, sizeof(packet.icmp));
 
-    err = sendto(sock,
+    setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+    int err = sendto(sock,
                &packet,
                sizeof(packet),
                0,
                destination_addrinfo->ai_addr,
                destination_addrinfo->ai_addrlen);
     assert(err != -1);
+}
 
-    err = recvfrom(sock,
+int icmp_recv(int sock, struct addrinfo *src_addrinfo)
+{
+
+    struct ping_packet packet;
+    int err = recvfrom(sock,
                    &packet,
                    sizeof(packet),
                    0,
-                   destination_addrinfo->ai_addr,
-                   &destination_addrinfo->ai_addrlen);
-    assert(err != -1);
-    printf("Received pong\n");
-
-    close(sock);
-    return 0;
+                   src_addrinfo->ai_addr,
+                   &src_addrinfo->ai_addrlen);
+    if (err == -1)
+        return -1;
+    if (packet.icmp.type == ICMP_ECHOREPLY)
+        return -2;
+    if (packet.icmp.type == ICMP_TIME_EXCEEDED)
+        return 0;
+    assert(0);
 }
