@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <assert.h>
 #include <sys/socket.h>
 #include <netdb.h>
@@ -57,6 +58,8 @@ int icmp_create_socket(const char *dest_domain_name)
 
     int sock = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
     assert(sock != -1);
+    int on = 1;
+    setsockopt(sock, IPPROTO_IP, IP_HDRINCL, &on, sizeof(on));
     struct timeval tv = { .tv_sec = 2, .tv_usec = 0 };
     setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
     return sock;
@@ -105,16 +108,14 @@ void icmp_send(int sock, int sequence, int ttl)
     assert(err != -1);
 }
 
-int icmp_recv(int sock, struct addrinfo *src_addrinfo)
+int icmp_recv(int sock, struct sockaddr_in *src_addr)
 {
 
     struct ping_packet packet;
-    int err = recvfrom(sock,
-                   &packet,
-                   sizeof(packet),
-                   0,
-                   src_addrinfo->ai_addr,
-                   &src_addrinfo->ai_addrlen);
+    socklen_t addr_len = sizeof(*src_addr);
+    int err = recvfrom(
+        sock, &packet, sizeof(packet), 0,
+        (struct sockaddr *)src_addr, &addr_len);
     if (err == -1)
         return -1;
     if (packet.icmp.type == ICMP_ECHOREPLY)

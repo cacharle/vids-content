@@ -1,6 +1,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <netdb.h>
+#include <arpa/inet.h>
 
 #include "icmp.h"
 
@@ -11,17 +12,20 @@ int main()
     for (int ttl = 1; ttl < 32; ttl++)
     {
         icmp_send(sock, ttl, ttl);
-        struct addrinfo src_addrinfo = {0};
-        int ret = icmp_recv(sock, &src_addrinfo);
-        if (ret == -2) {
-            printf("end reached\n");
-            break;
-        }
+        struct sockaddr_in src_addr = {0};
+        int ret = icmp_recv(sock, &src_addr);
         if (ret == -1) {
             printf("%d: timeout\n", ttl);
             continue;
         }
-        printf("%d: received\n", ttl);
+
+        char src_hostname[1048] = "";
+        getnameinfo((struct sockaddr *)&src_addr, sizeof(src_addr),
+                    src_hostname, sizeof(src_hostname), NULL, 0, 0);
+        printf("%d: received from %s (%s)\n", ttl, src_hostname, inet_ntoa(src_addr.sin_addr));
+
+        if (ret == -2)
+            break;
     }
 
     close(sock);
