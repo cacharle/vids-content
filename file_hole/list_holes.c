@@ -5,10 +5,10 @@
 #include <fcntl.h>
 #include <locale.h>
 
-int main()
+int main(int argc, char **argv)
 {
     setlocale(LC_ALL, "");
-    int fd = open("foo", O_RDONLY);
+    int fd = open(argv[1], O_RDONLY);
     off64_t offset = 0;
     off64_t new_offset = 0;
     while (1)
