@@ -1,4 +1,10 @@
 a.out
 *.o
+*.png
 
 file_hole/foo
+
+copy_file_range/test_*
+copy_file_range/bench_*
+copy_file_range/main
+copy_file_range/main_with_copy_range
