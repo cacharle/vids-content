@@ -10,7 +10,6 @@ int main(int argc, char **argv)
     setlocale(LC_ALL, "");
     int fd = open(argv[1], O_RDONLY);
     off64_t offset = 0;
-    off64_t new_offset = 0;
     while (1)
     {
         offset = lseek64(fd, offset, SEEK_HOLE);
@@ -24,7 +23,6 @@ int main(int argc, char **argv)
         char buf[32];
         read(fd, buf, 32);
         printf("Data found at offset %'lu: %s\n", offset, buf);
-        // offset += 32;
         offset = lseek64(fd, -32, SEEK_CUR);
     }
     close(fd);

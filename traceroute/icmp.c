@@ -45,7 +45,6 @@ addrinfo_to_ip(const struct addrinfo *addrinfo)
 
 int icmp_create_socket(const char *dest_domain_name)
 {
-
     char localhost[1024];
     gethostname(localhost, 1024);
     xgetaddrinfo(localhost, &source_addrinfo);
@@ -98,7 +97,7 @@ void icmp_send(int sock, int sequence, int ttl)
     packet.ip.check = checksum((uint16_t *)&packet.ip, sizeof(packet.ip));
     packet.icmp.checksum = checksum((uint16_t *)&packet.icmp, sizeof(packet.icmp));
 
-    setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
+    // setsockopt(sock, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl));
     int err = sendto(sock,
                &packet,
                sizeof(packet),
