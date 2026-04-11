@@ -116,11 +116,12 @@ int icmp_recv(int sock, struct sockaddr_in *src_addr)
     int err = recvfrom(
         sock, &packet, sizeof(packet), 0,
         (struct sockaddr *)src_addr, &addr_len);
-    if (err == -1)
+    if (err == -1 || packet.icmp.type == ICMP_DEST_UNREACH)
         return -1;
     if (packet.icmp.type == ICMP_ECHOREPLY)
         return -2;
     if (packet.icmp.type == ICMP_TIME_EXCEEDED)
         return 0;
+    // printf("packet.icmp.type = %d\n", packet.icmp.type);
     assert(0);
 }
