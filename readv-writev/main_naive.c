@@ -3,7 +3,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <arpa/inet.h>
-#include <sys/uio.h>
 
 int main()
 {
@@ -39,23 +38,20 @@ int main()
         char *status      = "HTTP/1.1 200 OK\r\n";
         char *type        = "Content-Type: text/html\r\n";
         char *connection  = "Connection: close\r\n";
-        char *server      = "Server: writev-demo\r\n";
+        char *server      = "Server: write-demo\r\n";
         char *cache       = "Cache-Control: no-cache\r\n";
         char *vary        = "Vary: Accept-Encoding\r\n";
         char *header_end  = "\r\n";
 
-        struct iovec iov[] = {
-            { .iov_base = status,         .iov_len = strlen(status) },
-            { .iov_base = type,           .iov_len = strlen(type) },
-            { .iov_base = connection,     .iov_len = strlen(connection) },
-            { .iov_base = content_length, .iov_len = strlen(content_length) },
-            { .iov_base = server,         .iov_len = strlen(server) },
-            { .iov_base = cache,          .iov_len = strlen(cache) },
-            { .iov_base = vary,           .iov_len = strlen(vary) },
-            { .iov_base = header_end,     .iov_len = strlen(header_end) },
-            { .iov_base = body,           .iov_len = strlen(body) },
-        };
-        writev(client_fd, iov, 9);
+        write(client_fd, status, strlen(status));
+        write(client_fd, type, strlen(type));
+        write(client_fd, connection, strlen(connection));
+        write(client_fd, content_length, strlen(content_length));
+        write(client_fd, server, strlen(server));
+        write(client_fd, cache, strlen(cache));
+        write(client_fd, vary, strlen(vary));
+        write(client_fd, header_end, strlen(header_end));
+        write(client_fd, body, strlen(body));
         close(client_fd);
     }
 
