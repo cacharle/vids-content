@@ -6,8 +6,7 @@ OUT="$DIR/bench_out"
 
 # Disable CoW on the output file so copy_file_range does a real copy on btrfs
 touch "$OUT"
-# chattr +C "$OUT"
-#; chattr +C $OUT" \
+chattr +C "$OUT"
 
 for f in $FILES; do
     hyperfine \

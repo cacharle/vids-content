@@ -1,6 +1,7 @@
 a.out
 *.o
 *.png
+vgcore.*
 
 file_hole/foo
 
