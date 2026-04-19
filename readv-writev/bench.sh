@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-REQUESTS=10000
+REQUESTS=100000
 CONCURRENCY=50
 
 cc -O2 -DPORT=9001 -o server_writev main.c
@@ -25,6 +25,6 @@ bench() {
 
 bench "writev (single syscall)" server_writev 9001
 sleep 1
-bench "write x2 (two syscalls)" server_naive 9002
+bench "write  (multiple syscalls)" server_naive 9002
 
 rm -f server_writev server_naive
