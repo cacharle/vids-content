@@ -1,9 +1,9 @@
+#include <stdint.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <sys/mman.h>
 #include <time.h>
 
-#define SIZE (1UL << 30)
+#define SIZE (1UL << 33)
 #define WRITES 1000000000UL
 
 int main(void) {
@@ -14,14 +14,14 @@ int main(void) {
 		return 1;
 	}
 
-	srand(42);
+	uint64_t s = 42;
 
 	struct timespec t0, t1;
 	clock_gettime(CLOCK_MONOTONIC, &t0);
 
 	for (unsigned long i = 0; i < WRITES; i++) {
-		unsigned long r = ((unsigned long)rand() << 31) ^ (unsigned long)rand();
-		unsigned long off = r % SIZE;
+		s ^= s << 13; s ^= s >> 7; s ^= s << 17;
+		unsigned long off = s & (SIZE - 1);
 		mem[off] = (char)i;
 	}
 

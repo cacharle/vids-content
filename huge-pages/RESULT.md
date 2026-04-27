@@ -2,6 +2,45 @@
 
 1 GiB anonymous `mmap`, 1,000,000,000 random single-byte writes, `MAP_POPULATE` on all three (page faults excluded from the measurement).
 
+## Reserving huge pages (as root)
+
+2 MiB pages (e.g. 600 pages ≈ 1.2 GiB):
+
+```sh
+sudo sysctl -w vm.nr_hugepages=600
+```
+
+1 GiB pages (needs 1 GiB of contiguous physical memory — usually reserved at boot via `default_hugepagesz=1G hugepagesz=1G hugepages=N` on the kernel cmdline):
+
+```sh
+echo 1 | sudo tee /sys/kernel/mm/hugepages/hugepages-1048576kB/nr_hugepages
+```
+
+Verify:
+
+```sh
+grep Huge /proc/meminfo
+```
+
+## Where the TLB sits
+
+```
+  CPU core ──▶ virtual addr ──▶ [ TLB ] ──hit──▶ physical addr ──▶ cache/RAM
+                                   │
+                                   miss
+                                   ▼
+                             [ page walker ]
+                                   │
+                                   ▼
+                        4-level page table in RAM
+```
+
+### TLB reach vs 1 GiB working set (512-entry L1 dTLB)
+
+- **4 KiB pages** → TLB covers 512 × 4 KiB = **2 MiB** (0.2% of working set) → constant misses.
+- **2 MiB pages** → TLB covers 512 × 2 MiB = **1 GiB** (100%) → essentially no misses.
+- **1 GiB pages** → 1 entry covers everything + shorter walk on the rare miss.
+
 ## Wall-clock time
 
 | Version | Page size | Time | ns/write |
@@ -20,6 +59,16 @@
 | **dTLB-store-misses** | **993,542,504** | **74,337** | **35,225** |
 | cycles | 49,124,787,522 | 44,390,082,517 | 42,022,594,805 |
 | instructions | 116,418,583,669 | 115,222,435,919 | 115,165,618,225 |
+
+## Memory footprint (`/proc/[pid]/status`)
+
+| Version | VmRSS | HugetlbPages | **VmPTE** |
+|---|---:|---:|---:|
+| 4 KiB | 1,050,004 kB | 0 | **2,092 kB** |
+| 2 MiB | 1,460 kB | 1,048,576 kB | **44 kB** |
+| 1 GiB | 1,424 kB | 1,048,576 kB | **40 kB** |
+
+The payload is ~1 GiB in every case, but the page table itself (`VmPTE`) shrinks by ~50×. With 4 KiB pages, mapping 1 GiB needs 262,144 leaf PTEs (~2 MiB of page-table memory per process); with 2 MiB pages only 512; with 1 GiB pages just 1. Huge-page memory is accounted in `HugetlbPages` instead of `VmRSS`, which is why the naive version's RSS looks large while the huge-page RSS is nearly empty — the underlying data size is identical.
 
 ## Takeaways
 
