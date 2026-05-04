@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <sched.h>
 
-#define ITERATIONS 40000000000
+#define ITERATIONS 4000000000
 
 int main(int argc, char **argv)
 {
@@ -14,11 +14,15 @@ int main(int argc, char **argv)
     CPU_SET(cpu, &cpuset);
     sched_setaffinity(0, sizeof cpuset, &cpuset);
 
-    long sum = 0;
-    #pragma GCC ivdep
-    for (size_t i = 0; i < ITERATIONS; i++) {
-        sum += i;
+    size_t iterations = ITERATIONS;
+    __asm__ volatile("" : "+r"(iterations));
+
+    for (int r = 0; r < 10; r++) {
+        long sum = 0;
+        for (size_t i = 0; i < iterations; i++) {
+            sum += i;
+        }
+        printf("sum: %ld\n", sum);
     }
-    printf("sum: %ld\n", sum);
     return 0;
 }
