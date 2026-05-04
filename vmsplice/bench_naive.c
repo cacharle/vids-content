@@ -21,7 +21,7 @@ void die_if(const char *prefix, int predicate)
 
 #define PORT  19999
 #define CHUNK (1UL << 20) /* 1 MiB */
-#define TOTAL (4UL << 30) /* 4 GiB */
+#define TOTAL (25UL << 30) /* 4 GiB */
 
 int main(void)
 {

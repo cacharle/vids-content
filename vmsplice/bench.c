@@ -30,7 +30,7 @@ typedef union {
 
 #define PORT  19999
 #define CHUNK (1UL << 20) /* 1 MiB */
-#define TOTAL (4UL << 30) /* 4 GiB */
+#define TOTAL (25UL << 30) /* 4 GiB */
 
 int main(void)
 {
@@ -65,7 +65,7 @@ int main(void)
         size_t remaining = TOTAL - sent;
         size_t want = remaining < CHUNK ? remaining : CHUNK;
         struct iovec iov = { .iov_base = data, .iov_len = want };
-        ssize_t in_pipe = vmsplice(p.write_fd, &iov, 1, 0);
+        ssize_t in_pipe = vmsplice(p.write_fd, &iov, 1, SPLICE_F_GIFT);
         die_if("vmsplice", in_pipe <= 0);
         for (ssize_t drained = 0; drained < in_pipe;) {
             ssize_t m = splice(p.read_fd, NULL, sock_fd, NULL,
