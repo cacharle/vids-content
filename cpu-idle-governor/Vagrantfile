@@ -1,0 +1,47 @@
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2204"
+  config.vm.hostname = "cpu-idle-governor"
+
+  config.vm.synced_folder ".", "/vagrant"
+
+  config.vm.provider "libvirt" do |lv|
+    lv.cpus = 4
+    lv.memory = 2048
+    # Pass the host CPU through verbatim so the guest sees real
+    # MWAIT/C-state support. Without this, KVM advertises a generic
+    # CPU model and the guest's intel_idle/cpuidle drivers won't bind,
+    # so deep idle states (and their wake-up latency) can't be observed.
+    lv.cpu_mode = "host-passthrough"
+  end
+
+  # Note: VirtualBox does not expose host C-states to guests — use the
+  # libvirt/KVM provider to reproduce the latency demo.
+  config.vm.provider "virtualbox" do |vb|
+    vb.cpus = 4
+    vb.memory = 2048
+  end
+
+  # Isolate CPUs 1-3 from the scheduler so the latency benchmark runs on
+  # quiet cores. C-states are intentionally left enabled — the point of
+  # the demo is to measure wake-up latency caused by deep idle states.
+  # At runtime, toggle states with `cpupower idle-set -d <N>` /
+  # `cpupower idle-set -E` to compare.
+  config.vm.provision "shell", inline: <<-SHELL
+    grep -q 'isolcpus' /proc/cmdline || {
+      sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="[^"]*"/GRUB_CMDLINE_LINUX_DEFAULT="isolcpus=1-3"/' /etc/default/grub
+      update-grub
+      reboot
+    }
+
+    # cpupower (idle-info / idle-set), turbostat, cyclictest, MSR access.
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y \
+      linux-tools-common \
+      linux-tools-generic \
+      linux-tools-$(uname -r) \
+      rt-tests \
+      msr-tools
+    modprobe msr || true
+  SHELL
+end
