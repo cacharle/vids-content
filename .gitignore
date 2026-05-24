@@ -1,5 +1,7 @@
 a.out
 *.o
+*.so
+*.a
 *.png
 vgcore.*
 
@@ -11,3 +13,5 @@ copy_file_range/main
 copy_file_range/main_with_copy_range
 
 inotify/foo
+
+pybind11/build

@@ -1,41 +1,58 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
+#include <pybind11/native_enum.h>
 
 #include <string>
 #include <vector>
 
 namespace py = pybind11;
 
-int add(int a, int b) {
+int add(int a, int b = 3) {
     return a + b;
 }
 
-std::vector<int> primes_below(int n) {
-    std::vector<int> out;
-    for (int i = 2; i < n; ++i) {
-        bool prime = true;
-        for (int j = 2; j * j <= i; ++j) {
-            if (i % j == 0) { prime = false; break; }
-        }
-        if (prime) out.push_back(i);
-    }
-    return out;
+double add(double a, double b) {
+    return 42 * a + b;
 }
 
-struct Greeter {
+void will_throw() {
+    throw std::runtime_error("hello there");
+}
+
+std::vector<std::string> keys(const std::map<std::string, int> &m) {
+    std::vector<std::string> v;
+    for (auto [k, _] : m)
+        v.push_back(k);
+    return v;
+}
+
+enum Color {
+    Red,
+    Green,
+    Blue,
+};
+
+struct Foo {
+    Foo(const std::string &name) : name(name) {}
+    std::string scream() const { return name + ": AAAAAAAAAAAAH!"; }
     std::string name;
-    explicit Greeter(std::string n) : name(std::move(n)) {}
-    std::string greet() const { return "hello, " + name; }
 };
 
 PYBIND11_MODULE(example, m) {
-    m.doc() = "tiny pybind11 demo";
+    m.def("add", py::overload_cast<int, int>(&add), py::arg("a"), py::arg("b") = 3);
+    m.def("add", py::overload_cast<double, double>(&add));
+    m.def("keys", &keys);
+    m.def("will_throw", &will_throw);
 
-    m.def("add", &add, "add two ints", py::arg("a"), py::arg("b"));
-    m.def("primes_below", &primes_below, "primes strictly below n");
+    py::native_enum<Color>(m, "Color", "enum.Enum")
+        .value("Red", Red)
+        .value("Green", Green)
+        .value("Blue", Blue)
+        .export_values()
+        .finalize();
 
-    py::class_<Greeter>(m, "Greeter")
-        .def(py::init<std::string>(), py::arg("name"))
-        .def("greet", &Greeter::greet)
-        .def_readwrite("name", &Greeter::name);
+    py::class_<Foo>(m, "Foo")
+        .def(py::init<const std::string&>())
+        .def_readwrite("name", &Foo::name)
+        .def("scream", &Foo::scream);
 }
