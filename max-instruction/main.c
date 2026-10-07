@@ -5,6 +5,7 @@
 
 // gcc -O2 -fno-if-conversion -fno-if-conversion2 main.c && ./a.out
 // gcc -O3 main.c && ./a.out
+// https://godbolt.org/z/vso61hbec
 
 void max_naive(double *xs, double *ys, double *zs, size_t n)
 {
