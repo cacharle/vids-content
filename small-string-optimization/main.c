@@ -1,13 +1,8 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdbool.h>
 
-struct StringLargeStorage {
-    char *data;
-    size_t capacity;
-};
-
-// TODO: need something else than length since we can have a large capacity with a 0 length
 // clang's implementation looks quite nice:
 //
 //  union {
@@ -15,14 +10,15 @@ struct StringLargeStorage {
 //     struct { unsigned char is_long:1, size:7; char data[23]; }    s;
 // };
 
-#define STRING_SMALL_STORAGE_SIZE sizeof(struct StringLargeStorage)
+#define STRING_SMALL_STORAGE_SIZE sizeof(char*)
 
 struct String {
     union {
-        struct StringLargeStorage large;
+        char *large;
         char small[STRING_SMALL_STORAGE_SIZE];
     };
     size_t length;
+    size_t capacity;
 };
 
 typedef struct String String;
@@ -30,34 +26,35 @@ typedef struct String String;
 String string_new() {
     String s;
     s.length = 0;
+    s.capacity = STRING_SMALL_STORAGE_SIZE - 1;
     s.small[0] = '\0';
     return s;
 }
 
 static bool is_small(String *s) {
-    return s->length < STRING_SMALL_STORAGE_SIZE;
+    return s->capacity < STRING_SMALL_STORAGE_SIZE;
 }
 
 char *string_data(String *s) {
     if (is_small(s))
         return s->small;
     else
-        return s->large.data;
+        return s->large;
 }
 
 static void grow_for(String *s, size_t added_capacity) {
-    if (!is_small(s)) {
+    if (is_small(s)) {
         if (s->length + added_capacity >= STRING_SMALL_STORAGE_SIZE)
         {
             char tmp[STRING_SMALL_STORAGE_SIZE];
             memcpy(tmp, s->small, STRING_SMALL_STORAGE_SIZE);
-            s->large.capacity = s->length + STRING_SMALL_STORAGE_SIZE;
-            s->large.data = malloc(s->large.capacity * sizeof(char));
-            memcpy(s->large.data, tmp, STRING_SMALL_STORAGE_SIZE);
+            s->capacity = s->length + STRING_SMALL_STORAGE_SIZE;
+            s->large = malloc(s->capacity * sizeof(char));
+            memcpy(s->large, tmp, STRING_SMALL_STORAGE_SIZE);
         }
     } else {
-        s->large.capacity += added_capacity;
-        s->large.data = realloc(s->large.data, s->large.capacity * sizeof(char));
+        s->capacity += added_capacity;
+        s->large = realloc(s->large, s->capacity * sizeof(char));
     }
 }
 
@@ -68,13 +65,51 @@ void string_push_char(String *s, char c) {
         s->length++;
         s->small[s->length] = '\0';
     } else {
-        s->large.data[s->length] = c;
+        s->large[s->length] = c;
         s->length++;
-        s->large.data[s->length] = '\0';
+        s->large[s->length] = '\0';
+    }
+}
+
+String string_copy(String *s)
+{
+    if (is_small(s))
+        return *s;
+    else {
+        String new_string = string_new();
+        new_string.capacity = s->capacity;
+        new_string.length = s->capacity;
+        new_string.large = malloc(new_string.capacity);
+        memcpy(new_string.large, s->large, new_string.capacity);
+        return new_string;
     }
 }
 
 int main() {
     String s = string_new();
+    string_push_char(&s, 'a');
+    string_push_char(&s, 'b');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    string_push_char(&s, 'c');
+    String x = string_copy(&s);
+    printf("%s\n", string_data(&s));
+    printf("%s\n", string_data(&x));
     return 0;
 }
